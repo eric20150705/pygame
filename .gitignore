@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual Environment
+venv/
+env/
+.env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Pygame specific
+*.png~
+*.bmp~
+*.wav~
+*.mp3~
+assets/temp/
+
+# Project specific
+highscores.txt
+save_game.*
+config.ini
+
+# System specific
+.DS_Store
+Thumbs.db
