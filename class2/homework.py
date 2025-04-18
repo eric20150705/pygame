@@ -27,14 +27,22 @@ pygame.draw.ellipse(bg, (255, 0, 0), [400, 160, 60, 35], 5)
 pygame.draw.line(bg, (255, 0, 255), (280, 220), (320, 220), 3)
 
 ######################循環偵測######################
+paint = False
+color = (0, 255, 255)
 while True:
     x, y = pygame.mouse.get_pos()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+
         if event.type == pygame.MOUSEBUTTONDOWN:
-            pygame.draw.circle(bg, (0, 0, 255), (x, y), 30, 0)
+            print("click!!!")
+            print(f"mouse pos: {x}, {y}")
+            paint = not (paint)
+
+    if paint:
+        pygame.draw.circle(bg, color, (x, y), 10, 0)
     # 繪製畫布於視窗左上角
     screen.blit(bg, (0, 0))
     # 更新視窗
