@@ -1,1 +1,0 @@
-update_camera_and_platforms
