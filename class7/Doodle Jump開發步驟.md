@@ -153,4 +153,19 @@
 -   特殊平台的顏色為紅色，並且會隨機混入一般平台列表中
 -   特殊平台的生成機率 20%
 -   當玩家踩到消失平台後，該平台會立即消失
--   特殊平台可以跳躍
+-   特殊平台可以跳
+### 步驟 11: 載入圖片
+新增os套件，這個套件可以拿來設定路徑為目前執行的python檔案的位置
+新增一個指令，指令名稱叫做load_doodle_sprites，這個指令是拿來載入image資料夾當中的圖片，有一個圖片是src.png，這張照片當中有很多物件，我們等等要切割他，所以我們先把他讀進來，使用convert_alpha進行轉換存到source_image裡面
+
+新增sprite_data字典，裡面可以放
+"std_platform": (0, 0, 116, 30),  # 標準平台
+"break_platform": (0, 145, 124, 33),  # 可破壞平台
+"spring_normal": (376, 188, 71, 35),  # 普通彈簧
+這幾個是存從src.png裁減照片的座標以及寬度高度，另外這個字典還有放玩家圖片及圖片路徑:
+"player_left_jumping": os.path.join("image", "l.png"),  # 左跳躍
+"player_left_falling": os.path.join("image", "ls.png"),  # 左下落
+"player_right_jumping": os.path.join("image", "r.png"),  # 右跳躍
+"player_right_falling": os.path.join("image", "rs.png"),  # 右下落
+
+接著在新增一個字典sprites，裡面會放已經處理好的圖片，玩家圖片要做convert_alpha處理，其他要裁減的圖片就用source_image.subsurface進行裁切處理，這個字典的key會跟sprite_data的key相同，製作好sprites之後就可以return出去
