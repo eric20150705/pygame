@@ -169,3 +169,15 @@
 "player_right_falling": os.path.join("image", "rs.png"),  # 右下落
 
 接著在新增一個字典sprites，裡面會放已經處理好的圖片，玩家圖片要做convert_alpha處理，其他要裁減的圖片就用source_image.subsurface進行裁切處理，這個字典的key會跟sprite_data的key相同，製作好sprites之後就可以return出去
+### 步驟12
+請幫我將角色、平台以及彈簧改成image資料夾當中的照片圖案，如果找不到照片使用原本的方塊圖案顯示
+將背景換成白色、文字改為黑色
+垂直速度小於0表示上升（跳躍中）
+反之當垂直速度大於0表示下降
+
+新增變數facing_right
+當direction>0，facing_right=True，反之。
+預設面相為右邊
+
+新增變數jumping紀錄玩家跳躍狀態
+如果有載入照片的話，確認角色存在，根據角色當前狀態選擇適合的圖片，調整大小為實際尺寸，繪製到視窗上面，如果找不到該角色照片就使用原本的方形
