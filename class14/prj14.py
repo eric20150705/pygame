@@ -7,12 +7,24 @@ import os  # 新增：用於處理路徑
 
 ###################### 全域變數 ######################
 os.chdir(sys.path[0])  # 設定當前工作目錄為腳本所在目錄
+
+# ================== 音效載入 ==================
+# 初始化混音器（避免部分電腦音效延遲）
+pygame.mixer.pre_init(44100, -16, 2, 512)
+pygame.mixer.init()
+# 載入音效檔案
+jump_sound = pygame.mixer.Sound(os.path.join("jump.mp3"))  # 跳躍音效
+spring_sound = pygame.mixer.Sound(os.path.join("spring.mp3"))  # 彈簧音效
 score = 0  # 當前分數
 highest_score = 0  # 最高分數
 game_over = False  # 遊戲結束狀態
 initial_player_y = 0  # 玩家初始高度（用於計算分數）
 special_platform_chance = 0.2  # 特殊平台生成機率（20%）
 special_platform_color = (255, 0, 0)  # 紅色
+
+# === 步驟12：新增角色狀態變數 ===
+facing_right = True  # 預設面向右
+jumping = False  # 預設非跳躍狀態
 
 
 ###################### 平台類別 ######################
@@ -30,13 +42,31 @@ class Platform:
         self.is_special = is_special  # 是否為特殊平台
         self.used = False  # 標記特殊平台是否已被踩過
 
-    def draw(self, display_area):
+    def draw(self, display_area, sprites=None):
         """
         繪製平台
         display_area: pygame顯示區域
+        sprites: 圖片字典（可選）
         """
         # 只繪製未被踩過的特殊平台或一般平台
         if not self.is_special or (self.is_special and not self.used):
+            # 步驟12：嘗試使用圖片，否則用方塊
+            if sprites:
+                # 特殊平台用break_platform，一般平台用std_platform
+                if self.is_special and "break_platform" in sprites:
+                    img = sprites["break_platform"]
+                elif not self.is_special and "std_platform" in sprites:
+                    img = sprites["std_platform"]
+                else:
+                    img = None
+                if img:
+                    # 調整圖片大小與平台一致
+                    img = pygame.transform.smoothscale(
+                        img, (self.rect.width, self.rect.height)
+                    )
+                    display_area.blit(img, self.rect)
+                    return
+            # 找不到圖片時用原本的方塊
             pygame.draw.rect(display_area, self.color, self.rect)
 
 
@@ -59,11 +89,38 @@ class Player:
         self.gravity = 0.5  # 重力加速度
         self.on_platform = False  # 是否站在平台上
 
-    def draw(self, display_area):
+        # 步驟12：新增狀態
+        self.facing_right = True
+        self.jumping = False
+
+    def draw(self, display_area, sprites=None):
         """
         繪製主角
         display_area: pygame顯示區域
+        sprites: 圖片字典（可選）
         """
+        # 步驟12：根據狀態選擇圖片，否則用方塊
+        if sprites:
+            # 根據主角狀態決定圖片key
+            if self.facing_right:
+                if self.velocity_y < 0:
+                    key = "player_right_jumping"
+                else:
+                    key = "player_right_falling"
+            else:
+                if self.velocity_y < 0:
+                    key = "player_left_jumping"
+                else:
+                    key = "player_left_falling"
+            img = sprites.get(key)
+            if img:
+                # 調整圖片大小為主角尺寸
+                img = pygame.transform.smoothscale(
+                    img, (self.rect.width, self.rect.height)
+                )
+                display_area.blit(img, self.rect)
+                return
+        # 找不到圖片時用原本的方塊
         pygame.draw.rect(display_area, self.color, self.rect)
 
     def move(self, direction, bg_x):
@@ -73,6 +130,11 @@ class Player:
         bg_x: 視窗寬度
         """
         self.rect.x += direction * self.speed
+        # 步驟12：根據方向設定面向
+        if direction > 0:
+            self.facing_right = True
+        elif direction < 0:
+            self.facing_right = False
         # 穿牆效果：完全離開左邊界，出現在右側
         if self.rect.right < 0:
             self.rect.left = bg_x
@@ -86,6 +148,8 @@ class Player:
         """
         self.velocity_y += self.gravity  # 垂直速度隨重力增加
         self.rect.y += int(self.velocity_y)  # 更新主角y座標
+        # 步驟12：根據垂直速度設定跳躍狀態
+        self.jumping = self.velocity_y < 0
 
     def check_platform_collision(self, platforms):
         """
@@ -94,10 +158,8 @@ class Player:
         """
         # 僅在主角往下掉時檢查碰撞
         if self.velocity_y > 0:
-            # 根據下落速度分段檢查，避免高速時穿透平台
             steps = max(1, int(self.velocity_y // 5))
             for step in range(1, steps + 1):
-                # 計算每個檢查點的y座標
                 check_y = (
                     self.rect.bottom
                     - int(self.velocity_y)
@@ -105,10 +167,8 @@ class Player:
                 )
                 check_rect = pygame.Rect(self.rect.left, check_y, self.rect.width, 1)
                 for platform in platforms:
-                    # 跳過已被踩過的特殊平台
                     if platform.is_special and platform.used:
                         continue
-                    # 主角底部與平台頂部重疊，且左右有交集
                     if (
                         check_rect.colliderect(platform.rect)
                         and self.rect.right > platform.rect.left
@@ -120,12 +180,22 @@ class Player:
                             self.velocity_y = self.jump_power
                             self.on_platform = True
                             platform.used = True  # 標記為已踩過
+                            # 播放跳躍音效
+                            try:
+                                jump_sound.play()
+                            except Exception:
+                                pass
                             return
                         # 一般平台：正常彈跳
                         self.rect.bottom = platform.rect.top
                         self.velocity_y = self.jump_power
                         self.on_platform = True
-                        return  # 一旦碰到平台就結束檢查
+                        # 播放跳躍音效
+                        try:
+                            jump_sound.play()
+                        except Exception:
+                            pass
+                        return
             self.on_platform = False
         else:
             self.on_platform = False
@@ -137,10 +207,8 @@ class Player:
         """
         # 僅在主角往下掉時檢查碰撞
         if self.velocity_y > 0:
-            # 根據下落速度分段檢查，避免高速時穿透彈簧
             steps = max(1, int(self.velocity_y // 5))
             for step in range(1, steps + 1):
-                # 計算每個檢查點的y座標
                 check_y = (
                     self.rect.bottom
                     - int(self.velocity_y)
@@ -148,18 +216,20 @@ class Player:
                 )
                 check_rect = pygame.Rect(self.rect.left, check_y, self.rect.width, 1)
                 for spring in springs:
-                    # 主角底部與彈簧頂部重疊，且左右有交集
                     if (
                         check_rect.colliderect(spring.rect)
                         and self.rect.right > spring.rect.left
                         and self.rect.left < spring.rect.right
                     ):
-                        # 將主角底部對齊彈簧頂部
                         self.rect.bottom = spring.rect.top
-                        # 讓主角獲得更高的跳躍力（往上跳25像素）
                         self.velocity_y = -25
                         self.on_platform = True
-                        return  # 一旦碰到彈簧就結束檢查
+                        # 播放彈簧音效
+                        try:
+                            spring_sound.play()
+                        except Exception:
+                            pass
+                        return
             # 若沒碰到彈簧則不處理
         else:
             self.on_platform = False
@@ -177,12 +247,19 @@ class Spring:
         self.rect = pygame.Rect(x, y, width, height)
         self.color = color
 
-    def draw(self, display_area):
+    def draw(self, display_area, sprites=None):
         """
         繪製彈簧道具
         display_area: pygame顯示區域
+        sprites: 圖片字典（可選）
         """
-        pygame.draw.rect(display_area, self.color, self.rect)
+        # 步驟12：嘗試使用圖片，否則用方塊
+        if sprites and "spring_normal" in sprites:
+            img = sprites["spring_normal"]
+            img = pygame.transform.smoothscale(img, (self.rect.width, self.rect.height))
+            display_area.blit(img, self.rect)
+        else:
+            pygame.draw.rect(display_area, self.color, self.rect)
 
 
 ###################### 載入圖片與精靈處理 ######################
@@ -234,6 +311,9 @@ win_width = 400
 win_height = 600
 screen = pygame.display.set_mode((win_width, win_height))
 pygame.display.set_caption("Doodle Jump - Step 7")
+
+###################### 載入圖片精靈 ######################
+sprites = load_doodle_sprites()  # 步驟12：載入圖片
 
 ###################### 主角設定 ######################
 player_width = 30
@@ -366,6 +446,8 @@ def reset_game():
     player.rect.x = (win_width - player_width) // 2
     player.rect.y = win_height - player_height - 50
     player.velocity_y = 0
+    player.facing_right = True  # 步驟12：重設面向
+    player.jumping = False  # 步驟12：重設跳躍狀態
     initial_player_y = player.rect.y
     # 重新產生平台
     platforms.clear()
@@ -442,29 +524,29 @@ while True:
             game_over = True
 
     # 畫面繪製
-    screen.fill((0, 0, 0))  # 填滿背景（黑色）
+    screen.fill((255, 255, 255))  # 步驟12：填滿背景（白色）
 
     # 繪製所有平台
     for platform in platforms:
-        platform.draw(screen)
+        platform.draw(screen, sprites)
 
     # 新增：繪製所有彈簧
     for spring in springs:
-        spring.draw(screen)
+        spring.draw(screen, sprites)
 
     # 繪製主角
-    player.draw(screen)
+    player.draw(screen, sprites)
 
-    # 顯示分數與最高分數
-    score_text = font.render(f"分數: {score}", True, (255, 255, 0))
+    # 顯示分數與最高分數（步驟12：文字改為黑色）
+    score_text = font.render(f"分數: {score}", True, (0, 0, 0))
     screen.blit(score_text, (10, 10))
-    high_score_text = font.render(f"最高分: {highest_score}", True, (255, 255, 255))
+    high_score_text = font.render(f"最高分: {highest_score}", True, (0, 0, 0))
     screen.blit(high_score_text, (10, 40))
 
     # 遊戲結束畫面
     if game_over:
         over_text = font.render("遊戲結束!", True, (255, 0, 0))
-        tip_text = font.render("按任意鍵重新開始", True, (255, 255, 255))
+        tip_text = font.render("按任意鍵重新開始", True, (0, 0, 0))
         screen.blit(
             over_text,
             (win_width // 2 - over_text.get_width() // 2, win_height // 2 - 40),
