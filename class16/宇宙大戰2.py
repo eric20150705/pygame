@@ -4,10 +4,11 @@ import sys
 import os
 
 ###################### 初始化設定 ######################
-os.chdir(sys.path[0])  # 設定當前工作目錄為腳本所在目錄
-pygame.init()
-FPS = pygame.time.Clock()  # 每一秒都會更新畫面
-
+os.chdir(
+    sys.path[0]
+)  # 設定當前工作目錄為腳本所在目錄     下次一定要講，不然就完了!!!!!!
+pygame.init()  # 下次一定要講，不然就完了!!!!!!
+FPS = pygame.time.Clock()
 ###################### 載入背景圖片並取得尺寸 ######################
 # 載入背景圖
 bg_img = pygame.image.load("space.png")
@@ -28,6 +29,16 @@ bg_y1 = 0  # 設定圖片的座標
 bg_y2 = -bg_height
 bg_scroll_speed = 2  # 捲動速度（像素/幀）
 
+###################### 主角設定 ######################
+# 載入主角圖片
+player_img = pygame.image.load("fighter_M.png")
+# 取得主角圖片尺寸
+player_w, player_h = player_img.get_size()
+# 設定主角初始座標（畫面中央下方）
+player_x = (bg_width - player_w) // 2
+player_y = bg_height - player_h - 30
+# 主角移動速度
+player_speed = 5
 ###################### 主程式迴圈 ######################
 while True:
     FPS.tick(60)
@@ -45,9 +56,32 @@ while True:
     if bg_y2 >= bg_height:
         bg_y2 = -bg_height
 
+    # 處理鍵盤連續按壓（移動主角）
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        player_x -= player_speed
+    if keys[pygame.K_RIGHT]:
+        player_x += player_speed
+    if keys[pygame.K_UP]:
+        player_y -= player_speed
+    if keys[pygame.K_DOWN]:
+        player_y += player_speed
+
+    # 限制主角不超出邊界
+    if player_x < 0:
+        player_x = 0
+    if player_x > bg_width - player_w:
+        player_x = bg_width - player_w
+    if player_y < 0:
+        player_y = 0
+    if player_y > bg_height - player_h:
+        player_y = bg_height - player_h
+
     # 繪製背景
     screen.blit(bg_img, (0, bg_y1))
     screen.blit(bg_img, (0, bg_y2))
+    # 繪製主角
+    screen.blit(player_img, (player_x, player_y))
 
     # 更新畫面
     pygame.display.update()
